@@ -24,6 +24,12 @@ class Message implements MessageInterface
     protected $headers = [];
 
     /**
+     * 小写请求头名称到原始名称的索引。
+     * @var string[]
+     */
+    protected $headerNames = [];
+
+    /**
      * @var StreamInterface
      */
     protected $body;
@@ -101,7 +107,7 @@ class Message implements MessageInterface
      */
     public function hasHeader($name)
     {
-        return isset($this->headers[$name]);
+        return isset($this->headerNames[strtolower($name)]);
     }
 
     /**
@@ -120,8 +126,9 @@ class Message implements MessageInterface
      */
     public function getHeader($name)
     {
-        if ($this->hasHeader($name)) {
-            return $this->headers[$name];
+        $normalizedName = strtolower($name);
+        if (isset($this->headerNames[$normalizedName])) {
+            return $this->headers[$this->headerNames[$normalizedName]];
         }
         return [];
     }
@@ -147,10 +154,7 @@ class Message implements MessageInterface
      */
     public function getHeaderLine($name)
     {
-        if ($this->hasHeader($name)) {
-            return implode(',', $this->headers[$name]);
-        }
-        return '';
+        return implode(',', $this->getHeader($name));
     }
 
     /**
@@ -184,16 +188,22 @@ class Message implements MessageInterface
     public function withHeader($name, $value)
     {
         if (is_scalar($value)) {
-            $this->headers[$name] = [(string)$value];
+            $header = [(string)$value];
         } else if (is_array($value)) {
             $header = [];
             foreach ($value as $v) {
                 $header[] = (string)$v;
             }
-            $this->headers[$name] = $header;
         } else {
             throw new \InvalidArgumentException('Header value can only be of type string');
         }
+        // 替换时采用本次设置的名称，移除原有不同大小写的键。
+        $normalizedName = strtolower($name);
+        if (isset($this->headerNames[$normalizedName]) && $this->headerNames[$normalizedName] !== $name) {
+            unset($this->headers[$this->headerNames[$normalizedName]]);
+        }
+        $this->headers[$name] = $header;
+        $this->headerNames[$normalizedName] = $name;
         return $this;
     }
 
@@ -225,7 +235,11 @@ class Message implements MessageInterface
         } else {
             throw new \InvalidArgumentException('Header value can only be of type string');
         }
-        $this->headers[$name] = $header;
+        // 追加时保留已存在的原始名称，首次设置才使用传入名称。
+        $normalizedName = strtolower($name);
+        $originalName = $this->headerNames[$normalizedName] ?? $name;
+        $this->headers[$originalName] = $header;
+        $this->headerNames[$normalizedName] = $originalName;
         return $this;
     }
 
@@ -243,7 +257,10 @@ class Message implements MessageInterface
      */
     public function withoutHeader($name)
     {
-        unset($this->headers[$name]);
+        $normalizedName = strtolower($name);
+        if (isset($this->headerNames[$normalizedName])) {
+            unset($this->headers[$this->headerNames[$normalizedName]], $this->headerNames[$normalizedName]);
+        }
         return $this;
     }
 

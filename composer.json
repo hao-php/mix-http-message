@@ -1,5 +1,5 @@
 {
-  "name": "mix/http-message",
+  "name": "haoa/mix-http-message",
   "description": "Http message library based on PSR-7 / PSR-17 standard, support Swoole, WorkerMan",
   "type": "library",
   "keywords": [
@@ -17,6 +17,9 @@
       "email": "coder.keda@gmail.com"
     }
   ],
+  "replace": {
+    "mix/http-message": "self.version"
+  },
   "require": {
     "php": ">=7.0.0",
     "psr/http-message": "^1.0",
